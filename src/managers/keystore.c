@@ -57,8 +57,11 @@ int32_t GenerateEntropy(uint8_t *entropy, uint8_t entropyLen, const char *passwo
 {
     uint8_t randomBuffer[ENTROPY_MAX_LEN], inputBuffer[ENTROPY_MAX_LEN], outputBuffer[ENTROPY_MAX_LEN];
     int32_t ret;
+    uint32_t successful_sources = 0;
 
     do {
+        memset_s(entropy, entropyLen, 0, entropyLen);
+        memset_s(outputBuffer, sizeof(outputBuffer), 0, sizeof(outputBuffer));
         HashWithSalt(inputBuffer, (uint8_t *)password, strnlen_s(password, PASSWORD_MAX_LEN), "generate entropy");
 
         SE_GetTRng(randomBuffer, ENTROPY_MAX_LEN);
@@ -68,16 +71,25 @@ int32_t GenerateEntropy(uint8_t *entropy, uint8_t entropyLen, const char *passwo
         hkdf(inputBuffer, randomBuffer, outputBuffer, ITERATION_TIME);
         KEYSTORE_PRINT_ARRAY("outputBuffer", outputBuffer, ENTROPY_MAX_LEN);
         memcpy_s(inputBuffer, sizeof(inputBuffer), outputBuffer, ENTROPY_MAX_LEN);
+        successful_sources++;
 
         ret = SE_GetDS28S60Rng(randomBuffer, ENTROPY_MAX_LEN);
-        CHECK_ERRCODE_BREAK("get ds28s60 trng", ret);
+        if (ret != SUCCESS_CODE) {
+            printf("get ds28s60 trng err,0x%X,line=%d\r\n", ret, __LINE__);
+        } else {
+            successful_sources++;
+        }
         KEYSTORE_PRINT_ARRAY("ds28s60 rng", randomBuffer, ENTROPY_MAX_LEN);
         hkdf(inputBuffer, randomBuffer, outputBuffer, ITERATION_TIME);
         KEYSTORE_PRINT_ARRAY("outputBuffer", outputBuffer, ENTROPY_MAX_LEN);
         memcpy_s(inputBuffer, sizeof(inputBuffer), outputBuffer, ENTROPY_MAX_LEN);
 
         ret = SE_GetAtecc608bRng(randomBuffer, ENTROPY_MAX_LEN);
-        CHECK_ERRCODE_BREAK("get 608b trng", ret);
+        if (ret != SUCCESS_CODE) {
+            printf("get 608b trng err,0x%X,line=%d\r\n", ret, __LINE__);
+        } else {
+            successful_sources++;
+        }
         KEYSTORE_PRINT_ARRAY("608b rng", randomBuffer, ENTROPY_MAX_LEN);
         hkdf(inputBuffer, randomBuffer, outputBuffer, ITERATION_TIME);
 
@@ -87,6 +99,9 @@ int32_t GenerateEntropy(uint8_t *entropy, uint8_t entropyLen, const char *passwo
     CLEAR_ARRAY(outputBuffer);
     CLEAR_ARRAY(inputBuffer);
     CLEAR_ARRAY(randomBuffer);
+    if (successful_sources == 0) {
+        return ERR_KEYSTORE_ENTROPY_FAIL;
+    }
     return ret;
 }
 

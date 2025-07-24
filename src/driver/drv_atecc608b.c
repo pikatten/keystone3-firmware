@@ -70,10 +70,14 @@ int32_t Atecc608bGetRng(uint8_t *rngArray, uint32_t num)
     uint8_t buffer[32];
     uint32_t i = 0, copyNum;
 
+    printf("Atecc608bGetRng: num=%d\r\n", num);
     while (i < num) {
         copyNum = (num - i) > 32 ? 32 : (num - i);
         ret = atcab_random(buffer);
-        CHECK_ERRCODE_BREAK("atcab_random", ret);
+        if (ret != ATCA_SUCCESS) {
+            printf("atcab_random failed with error 0x%X\r\n", ret);
+            break;
+        }
         memcpy(rngArray + i, buffer, copyNum);
         i += copyNum;
     }

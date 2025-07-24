@@ -468,10 +468,14 @@ int32_t DS28S60_GetRng(uint8_t *rngArray, uint32_t num)
     uint8_t buffer[253], copyNum;
     uint32_t i = 0;
 
+    printf("DS28S60_GetRng: num=%d\r\n", num);
     while (i < num) {
         copyNum = (num - i) > 253 ? 253 : (num - i);
         ret = DS28S60_SendCmdAndGetResult(DS28S60_CMD_READ_RNG, &copyNum, 1, copyNum, buffer);
-        CHECK_ERRCODE_BREAK("ds28s60_getrng", ret);
+        if (ret != DS28S60_SUCCESS) {
+            printf("DS28S60_SendCmdAndGetResult failed with error 0x%X\r\n", ret);
+            break;
+        }
         memcpy(rngArray + i, buffer, copyNum);
         i += copyNum;
     }
